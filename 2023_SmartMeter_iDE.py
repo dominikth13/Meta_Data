@@ -355,11 +355,6 @@ def createInitialPopulation(dataset, popSize, radius):
         #  Konkatenierung pro Iteration erzeugt exponentiale Laufzeit, siehe https://stackoverflow.com/questions/36489576/why-does-concatenation-of-dataframes-get-exponentially-slower
         datasetClusteredList.append(datasetClustered)
         
-        #partitioning = partitioning.append(datasetClustered)
-        #TODO: ggf. concat-Operationen geschickter durchführen
-        # siehe z.B. https://stackoverflow.com/questions/75956209/dataframe-object-has-no-attribute-append
-        # partitioning = pd.concat([partitioning,datasetClustered])
-        
         # Bestimmung der maximalen Clusteranzahl der Population
         cNumber = datasetClustered.loc[0, "Anzahl Cluster"]
         
