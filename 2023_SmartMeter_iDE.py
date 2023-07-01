@@ -37,7 +37,7 @@ pd.options.mode.chained_assignment = None
 
 # Einlesen der jeweiligen analytischen Datenquelle je nach gewähltem Setting
 #TODO: hier Anpassen der verwendeten Instanz (aktuell verwendet: 1 Monat, 1000 IDs)
-load_df = pd.read_csv("setting_1month_1000ids.csv")
+load_df = pd.read_csv("data/setting_1month_1000ids.csv")
 del load_df["Unnamed: 0"]
 id_df = load_df["ID"]
 del load_df["ID"]
@@ -343,28 +343,35 @@ def createInitialPopulation(dataset, popSize, radius):
     partitioning = pd.DataFrame()
     # DF zur Speicherung der entstandenen initialen Population
     population = pd.DataFrame(columns=["Ind","LR","CR","Cluster","Active","Centroid", "Fitness"])
-    
+    datasetClusteredList = []
     ### AUFTEILUNG DES DATENSATZES IN EINE INITIALE PARTITIONIERUNG
     for i in range(0, popSize):
         
         # Aufteilung des Datensatzes über Cluster Decomposition Algorithm
         datasetClustered = clusterDecomposition(dataset, radius)
         datasetClustered["Ind"] = i
+
+        # Speichere datasetClustered in Liste, welche nach der Schleife zusammen zu partitioning hinzugefügt wird
+        #  Konkatenierung pro Iteration erzeugt exponentiale Laufzeit, siehe https://stackoverflow.com/questions/36489576/why-does-concatenation-of-dataframes-get-exponentially-slower
+        datasetClusteredList.append(datasetClustered)
         
         #partitioning = partitioning.append(datasetClustered)
         #TODO: ggf. concat-Operationen geschickter durchführen
         # siehe z.B. https://stackoverflow.com/questions/75956209/dataframe-object-has-no-attribute-append
-        partitioning = pd.concat([partitioning,datasetClustered])
+        # partitioning = pd.concat([partitioning,datasetClustered])
         
         # Bestimmung der maximalen Clusteranzahl der Population
         cNumber = datasetClustered.loc[0, "Anzahl Cluster"]
         
         if cNumber > cMax:
             cMax = cNumber
+    
+    partitioning = pd.concat(datasetClusteredList)
     print("Ende CDA")
     
     print(f"Maximale Clusteranzahl über CDA: {cMax}")
     
+    chromosomeFitnessList = []
     ### ERSTELLUNG DER CHROMOSOME AUS DEN ERSTELLTEN INDIVIDUEN UND BEWERTUNG ANHAND DER FITNESSFUNKTION
     for i in range(0, popSize):
         
@@ -379,9 +386,10 @@ def createInitialPopulation(dataset, popSize, radius):
         #TODO: ggf. Aufruf von evaluateFitness anpassen, basierend auf anderen implementierten Fitnessbewertungen
         chromosomeFitness, partition = evaluateFitness(chromosome, partition)
         #population = population.append(chromosomeFitness)
-        population = pd.concat([population,chromosomeFitness])
+        chromosomeFitnessList.append(chromosomeFitness)
         partitioning.loc[partitioning.Ind == i,:] = partition
     
+    population = pd.concat([population, pd.concat(chromosomeFitnessList)])
     return population, partitioning
 
 ## Optimizing the Initial Solution
