@@ -280,6 +280,23 @@ def evaluateFitness(chromosome, partition):
     # Überprüfung, ob mindestens 2 Cluster aktiv sind, ansonsten werden zufällige Cluster aktiviert
     activeClusters = chromosome[chromosome["Active"]<0.50].reset_index(drop=True)
     
+    validationIndex = calculate_vi(activeClusters, chromosome, partition)
+    ssc = calculate_ssc(activeClusters, chromosome, partition)
+
+    # Zuordnung des Fitnesswertes zum Chromosom
+    chromosomeFitness = copy.deepcopy(chromosome)
+    for i in range(0, len(chromosome)):
+        chromosomeFitness["SSC"] = ssc
+        chromosomeFitness["VI"] = validationIndex
+        if False: #Hier entscheiden, welches Validierungsmaß verwendet werden soll
+            chromosomeFitness["Fitness"] = validationIndex
+        else:
+            # Vorzeichen muss getauscht werden, da bei SSC gilt Min = -1 < 1 = Max, aber wir brauchen Max = -1 < 1 = Min
+            chromosomeFitness["Fitness"] = ssc * (-1)
+    
+    return chromosomeFitness, partition
+
+def calculate_vi(activeClusters, chromosome, partition):
     ### INTRA CLUSTER: ABSTAND DER DATENPUNKTE INNERHALB EINES CLUSTERS (KOMPAKTHEIT)
     intraCluster = 0
 
@@ -322,14 +339,14 @@ def evaluateFitness(chromosome, partition):
     sigma = 1
     normalDistr = norm.pdf(cNumber, mü, sigma)
         
-    validationIndex = round((alpha*normalDistr+1)*(intraCluster/interCluster),4)
+    return round((alpha*normalDistr+1)*(intraCluster/interCluster),4)
 
-    # Zuordnung des Fitnesswertes zum Chromosom
-    chromosomeFitness = copy.deepcopy(chromosome)
-    for i in range(0, len(chromosome)):
-        chromosomeFitness["Fitness"] = validationIndex
-    
-    return chromosomeFitness, partition
+def calculate_ssc(activeClusters, chromosome, partition):
+    clusterList = activeClusters["Cluster"].unique()
+    datapoints = copy.deepcopy(partition[partition["Cluster"].isin(clusterList)]).reset_index(drop=True)
+    datapoints = datapoints.iloc[:,:feature_count]
+    ssc = metrics.silhouette_score(X=datapoints.to_numpy(), labels=copy.deepcopy(partition[partition["Cluster"].isin(clusterList)])["Cluster"].reset_index(drop=True))
+    return ssc
 
 ### Putting everything together & Creating the Initial Population
 
@@ -342,7 +359,7 @@ def createInitialPopulation(dataset, popSize, radius):
     # DF zur Speicherung aller entstandenen initialen Individuen
     partitioning = pd.DataFrame()
     # DF zur Speicherung der entstandenen initialen Population
-    population = pd.DataFrame(columns=["Ind","LR","CR","Cluster","Active","Centroid", "Fitness"])
+    population = pd.DataFrame(columns=["Ind","LR","CR","Cluster","Active","Centroid", "Fitness","VI","SSC"])
     datasetClusteredList = []
     ### AUFTEILUNG DES DATENSATZES IN EINE INITIALE PARTITIONIERUNG
     for i in range(0, popSize):
@@ -551,7 +568,7 @@ def createAccelerationVector(nextGenerationBest, generationBest, pWorst):
     else:
         
         ### pWorst mutiert in Richtung generationBest und nextGenerationBest
-        accelerationVector = pd.DataFrame(columns=["Ind","LR","CR","Cluster","Active","Centroid","Fitness"])
+        accelerationVector = pd.DataFrame(columns=["Ind","LR","CR","Cluster","Active","Centroid","Fitness","VI","SSC"])
         nü = 0.3 # Acceleration Rate
             
         for i in range(0, len(nextGenerationBest)):
@@ -805,9 +822,9 @@ for i in range(1,2):
     # Evaluation
     #TODO: ggf. um weitere Validierungskennzahlen ergänzen
     results_df.loc[i,"Clusters"] = len(sorted(currentBestPartition.Cluster.unique()))
-    results_df.loc[i,"VI"] = pBest.Fitness.min()
+    results_df.loc[i,"VI"] = pBest.VI.min()
     si = metrics.silhouette_score(currentBestPartition.iloc[:,:feature_count].to_numpy(), currentBestPartition["Cluster"])
-    results_df.loc[i,"SI"] = si
+    results_df.loc[i,"SI"] = pBest.SSC.max()
     db = davies_bouldin_score(currentBestPartition.iloc[:,:feature_count].to_numpy(),currentBestPartition["Cluster"])
     results_df.loc[i,"DB"] = db
     
@@ -824,12 +841,12 @@ for i in range(1,2):
         verteilung_lst.append(len(pointsPerCluster))
     results_df.loc[i, "Verteilung"] = verteilung_lst
 
-#     Export der Lösung
-#     filename1 = "partitioning_No" + str(i) + ".csv"
-#     filename2 = "pBest_No" + str(i) + ".csv"
-#     currentBestPartition["ID"]=id_df
-#     currentBestPartition.to_csv(filename1)
-#     pBest.to_csv(filename2)
+    #Export der Lösung
+    filename1 = "partitioning_No" + str(i) + ".csv"
+    filename2 = "pBest_No" + str(i) + ".csv"
+    currentBestPartition["ID"]=id_df
+    currentBestPartition.to_csv(filename1)
+    pBest.to_csv(filename2)
     
     print(results_df)
 
