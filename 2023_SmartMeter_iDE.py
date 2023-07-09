@@ -360,7 +360,9 @@ def createInitialPopulation(dataset, popSize, radius):
     partitioning = pd.DataFrame()
     # DF zur Speicherung der entstandenen initialen Population
     population = pd.DataFrame(columns=["Ind","LR","CR","Cluster","Active","Centroid", "Fitness","VI","SSC"])
-    datasetClusteredList = []
+
+    #Um expotentielle Laufzeit zu vermeiden: temporäre Liste, die nach der condat gelöscht wird
+    datasetClusteredTempListe = []
     ### AUFTEILUNG DES DATENSATZES IN EINE INITIALE PARTITIONIERUNG
     for i in range(0, popSize):
         
@@ -370,21 +372,25 @@ def createInitialPopulation(dataset, popSize, radius):
 
         # Speichere datasetClustered in Liste, welche nach der Schleife zusammen zu partitioning hinzugefügt wird
         #  Konkatenierung pro Iteration erzeugt exponentiale Laufzeit, siehe https://stackoverflow.com/questions/36489576/why-does-concatenation-of-dataframes-get-exponentially-slower
-        datasetClusteredList.append(datasetClustered)
+        # partitioning = pd.concat([partitioning,datasetClustered])
+        datasetClusteredTempListe.append(datasetClustered)
         
         # Bestimmung der maximalen Clusteranzahl der Population
         cNumber = datasetClustered.loc[0, "Anzahl Cluster"]
         
         if cNumber > cMax:
             cMax = cNumber
-    
-    partitioning = pd.concat(datasetClusteredList)
-    del datasetClusteredList
+
+    #Concat ausser der Schleife
+    partitioning = pd.concat(datasetClusteredTempListe, axis=0)
+    del datasetClusteredTempListe #Free Up Memory
+
     print("Ende CDA")
     
     print(f"Maximale Clusteranzahl über CDA: {cMax}")
-    
-    chromosomeFitnessList = []
+
+    #Um expotentielle Laufzeit zu vermeiden: temporäre Liste, die nach der condat gelöscht wird
+    chromosomeFitnessTempListe = []
     ### ERSTELLUNG DER CHROMOSOME AUS DEN ERSTELLTEN INDIVIDUEN UND BEWERTUNG ANHAND DER FITNESSFUNKTION
     for i in range(0, popSize):
         
@@ -399,11 +405,12 @@ def createInitialPopulation(dataset, popSize, radius):
         #TODO: ggf. Aufruf von evaluateFitness anpassen, basierend auf anderen implementierten Fitnessbewertungen
         chromosomeFitness, partition = evaluateFitness(chromosome, partition)
         #population = population.append(chromosomeFitness)
-        chromosomeFitnessList.append(chromosomeFitness)
+        chromosomeFitnessTempListe.append(chromosomeFitness)
         partitioning.loc[partitioning.Ind == i,:] = partition
-    
-    population = pd.concat([population, pd.concat(chromosomeFitnessList)])
-    del chromosomeFitnessList
+
+    #Concat ausser der Schleife
+    population = pd.concat(chromosomeFitnessTempListe, axis=0)
+    del chromosomeFitnessTempListe
     return population, partitioning
 
 ## Optimizing the Initial Solution
