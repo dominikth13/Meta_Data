@@ -379,6 +379,7 @@ def createInitialPopulation(dataset, popSize, radius):
             cMax = cNumber
     
     partitioning = pd.concat(datasetClusteredList)
+    del datasetClusteredList
     print("Ende CDA")
     
     print(f"Maximale Clusteranzahl über CDA: {cMax}")
@@ -402,6 +403,7 @@ def createInitialPopulation(dataset, popSize, radius):
         partitioning.loc[partitioning.Ind == i,:] = partition
     
     population = pd.concat([population, pd.concat(chromosomeFitnessList)])
+    del chromosomeFitnessList
     return population, partitioning
 
 ## Optimizing the Initial Solution
