@@ -363,6 +363,8 @@ def createInitialPopulation(dataset, popSize, radius):
 
     #Um expotentielle Laufzeit zu vermeiden: temporäre Liste, die nach der condat gelöscht wird
     datasetClusteredTempListe = []
+
+    
     ### AUFTEILUNG DES DATENSATZES IN EINE INITIALE PARTITIONIERUNG
     for i in range(0, popSize):
         
